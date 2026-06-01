@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>农知云 - 智慧农业管理平台</title>
+    <!-- 引入字体图标库 (Font Awesome 6免费图标库) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- 引入轻量级图表库 Chart.js 用于趋势曲线 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #EFF5EC;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            color: #1E2F1C;
+            padding-bottom: 80px;
+        }
+
+        /* 全局容器 */
+        .app-container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #F8FBF6;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            border-radius: 0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 模拟底部tab导航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 16px 12px;
+            border-top: 1px solid #DFE6DA;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
+            z-index: 100;
+        }
+        .nav-item {
+            text-align: center;
+            flex: 1;
+            color: #7F8C7A;
+            transition: 0.2s;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .nav-item i {
+            font-size: 24px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .nav-item.active {
+            color: #2F6B2F;
+            font-weight: 500;
+        }
+        /* 页面切换主体 */
+        .page {
+            display: none;
+            padding: 16px 16px 24px;
+            animation: fade 0.25s ease;
+        }
+        .page.active-page {
+            display: block;
+        }
+        @keyframes fade {
+            from { opacity: 0; transform: translateY(5px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+
+        /* 卡片通用样式 */
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            border: 1px solid #E9F0E5;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #2C4B1E;
+        }
+
+        /* 首页顶部地块栏 */
+        .farm-header {
+            background: white;
+            border-radius: 28px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            border: 1px solid #E2EADB;
+        }
+        .farm-info h3 {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+        .farm-info p {
+            font-size: 12px;
+            color: #6F7E68;
+        }
+        .device-badge {
+            background: #EFF5EC;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-size: 13px;
+        }
+
+        /* 八大核心数据卡片网格 */
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .data-item {
+            background: #FEFEF9;
+            border-radius: 20px;
+            padding: 12px;
+            transition: all 0.1s;
+            border: 1px solid #ECF3E7;
+        }
+        .data-label {
+            font-size: 13px;
+            color: #6E8264;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .data-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1F3B14;
+            line-height: 1.2;
+        }
+        .trend {
+            font-size: 11px;
+            color: #8AA07E;
+            margin-top: 5px;
+        }
+        /* 状态条 */
+        .status-bar {
+            background: #EAF5E3;
+            border-radius: 40px;
+            padding: 10px 16px;
+            margin: 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .status-bar.warning {
+            background: #FFF1E0;
+            color: #C45A00;
+            border-left: 4px solid #FF9F3D;
+        }
+        .quick-buttons {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .quick-btn {
+            flex: 1;
+            background: #FFFFFF;
+            border-radius: 48px;
+            padding: 10px 0;
+            text-align: center;
+            font-weight: 500;
+            font-size: 13px;
+            border: 1px solid #DDE8D5;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+        }
+        .today-tip {
+            background: #F4FBF0;
+            border-left: 6px solid #4CAF50;
+        }
+
+        /* 图表容器 */
+        .chart-container {
+            height: 200px;
+            margin: 10px 0;
+        }
+        .filter-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .filter-chip {
+            background: #ECF3E7;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .filter-chip.active {
+            background: #2F6B2F;
+            color: white;
+        }
+        .report-text {
+            background: #F9FCF7;
+            padding: 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .alert-item {
+            padding: 14px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            border-left: 5px solid;
+            background: #fff;
+        }
+        .alert-red { border-left-color: #E53E3E; background: #FFF5F5; }
+        .alert-yellow { border-left-color: #F4B942; background: #FFFBF0; }
+        .alert-green { border-left-color: #48BB78; background: #F0FFF4; }
+        .device-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #E9F0E5;
+            padding: 12px 0;
+        }
+        .btn-sm {
+            background: #EFF5EC;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+        }
+        .text-muted { color: #8F9E88; font-size: 12px; }
+        i.icon-green { color: #2F6B2F; width: 22px; }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- 页面：首页 -->
+    <div id="homePage" class="page active-page">
+        <!-- 顶部导航栏（地块切换与设备在线） -->
+        <div class="farm-header">
+            <div class="farm-info">
+                <h3>🌾 示范稻田·东区 <i class="fas fa-chevron-down" style="font-size: 12px;"></i></h3>
+                <p>📍 河南省信阳市平桥区 · 8台设备在线</p>
+            </div>
+            <div class="device-badge"><i class="fas fa-signal"></i> 在线:8</div>
+        </div>
+
+        <!-- 核心数据卡片区（八大指标动态） -->
+        <div class="card">
+            <div class="card-header">📊 实时农情数据 <span class="text-muted"><i class="fas fa-chart-line"></i> 今日极值已更新</span></div>
+            <div class="data-grid" id="dataGrid">
+                <!-- 动态js渲染八大指标 -->
+            </div>
+        </div>
+
+        <!-- 智能状态提示条 -->
+        <div id="statusTip" class="status-bar">
+            <i class="fas fa-check-circle" style="color:#2F6B2F;"></i> 农情稳定，适宜耕作
+        </div>
+
+        <!-- 快捷功能入口 -->
+        <div class="quick-buttons">
+            <div class="quick-btn" onclick="alert('模拟：实时巡田-跳转监控画面')"><i class="fas fa-video"></i> 实时巡田</div>
+            <div class="quick-btn" onclick="alert('农事建议：根据当前土壤墒情建议灌溉')"><i class="fas fa-leaf"></i> 农事建议</div>
+            <div class="quick-btn" onclick="alert('设备巡检：所有传感器正常，电量良好')"><i class="fas fa-microchip"></i> 设备巡检</div>
+            <div class="quick-btn" onclick="alert('数据快照：已生成今日快照并保存')"><i class="fas fa-camera"></i> 数据快照</div>
+        </div>
+
+        <!-- 今日农事推荐 -->
+        <div class="card today-tip">
+            <div><i class="fas fa-seedling"></i> 🌟 今日农事推荐</div>
+            <div id="dailyTip">土壤偏干，建议早晚灌溉；湿度偏高，需防范病害滋生。</div>
+        </div>
+    </div>
+
+    <!-- 页面：数据中心 -->
+    <div id="dataCenterPage" class="page">
+        <div class="card">
+            <div class="card-header">📈 精准数据分析</div>
+            <div class="filter-bar" id="dataFilterBar">
+                <span class="filter-chip active" data-type="soil">土壤数据</span>
+                <span class="filter-chip" data-type="weather">气象数据</span>
+                <span class="filter-chip" data-type="env">环境数据</span>
+                <span class="filter-chip" data-type="pest">虫情数据</span>
+            </div>
+            <div class="filter-bar" id="timeFilterBar">
+                <span class="filter-chip active" data-period="today">今日</span>
+                <span class="filter-chip" data-period="week">近7日</span>
+                <span class="filter-chip" data-period="month">近30日</span>
+            </div>
+            <canvas id="trendChart" height="180" style="max-height: 200px; width:100%"></canvas>
+            <div class="card-header" style="margin-top: 16px;">📄 智能分析报告</div>
+            <div id="analysisReport" class="report-text">
+                当前土壤湿度适宜，未来三日光照充足，建议补充钾肥；风险总结：无极端天气。
+            </div>
+            <div style="display: flex; gap:12px; margin-top: 16px;">
+                <button class="quick-btn" style="flex:1" onclick="alert('截图保存功能模拟')"><i class="fas fa-camera"></i> 截图</button>
+                <button class="quick-btn" style="flex:1" onclick="alert('报表导出CSV模拟')"><i class="fas fa-download"></i> 导出报表</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页面：预警消息 -->
+    <div id="alertPage" class="page">
+        <div class="card">
+            <div class="card-header">⚠️ 风险主动预警 <span class="text-muted">三色分级</span></div>
+            <div id="alertList">
+                <!-- 动态预警卡片 -->
+            </div>
+            <div class="card-header" style="margin-top: 8px;">📋 历史预警台账</div>
+            <div id="historyAlertList" class="text-muted" style="font-size:13px;"></div>
+        </div>
+    </div>
+
+    <!-- 页面：个人中心 -->
+    <div id="profilePage" class="page">
+        <div class="card">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <i class="fas fa-user-circle" style="font-size: 48px; color:#4C7A34;"></i>
+                <div><strong>张书恺</strong><br><span class="text-muted">种植管理员 · 高级会员</span></div>
+            </div>
+            <hr style="margin: 16px 0; border-color:#E9F0E5;">
+            <div><i class="fas fa-tachometer-alt"></i> 绑定地块：3块 &nbsp;| 设备总数：12</div>
+            <div class="card-header" style="margin-top: 16px;">📡 设备管理中心</div>
+            <div id="deviceList"></div>
+            <button class="quick-btn" style="margin-top: 8px;" onclick="alert('新增设备绑定模拟')"><i class="fas fa-plus"></i> 新增设备</button>
+            
+            <div class="card-header" style="margin-top: 20px;">📋 地块管理</div>
+            <div>🌱 东区水稻田 | 西区玉米试验田 | 南智慧大棚</div>
+            <div class="card-header" style="margin-top: 16px;">⭐ 服务订阅</div>
+            <div>基础功能免费 · 高级年度订阅 <button class="btn-sm" onclick="alert('升级会员')">升级</button></div>
+            <div class="card-header" style="margin-top: 16px;">📘 帮助中心 & 农技知识库</div>
+            <div>🔍 极简教程 | 常见问题 | 水稻病虫害防治指南</div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" data-page="home"><i class="fas fa-home"></i><span>首页</span></div>
+        <div class="nav-item" data-page="dataCenter"><i class="fas fa-chart-line"></i><span>数据中心</span></div>
+        <div class="nav-item" data-page="alert"><i class="fas fa-bell"></i><span>预警</span></div>
+        <div class="nav-item" data-page="profile"><i class="fas fa-user"></i><span>我的</span></div>
+    </div>
+</div>
+
+<script>
+    // ---------- 模拟实时数据 ----------
+    let currentSoilTemp = 22.3, currentSoilMoist = 28.5, soilPH = 6.8, airTemp = 26.4, airHum = 71;
+    let lightIntensity = 38500, rainFall = 0, windSpeed = 2.1, windDir = "东南风";
+    let soilMoisture = 28.2; // 土壤墒情
+
+    // 更新UI动态模拟数值和趋势
+    function refreshDashboard() {
+        // 模拟动态变化使界面真实
+        currentSoilTemp = (20 + Math.random() * 4).toFixed(1);
+        currentSoilMoist = (25 + Math.random() * 8).toFixed(1);
+        soilPH = (6.2 + Math.random() * 1).toFixed(1);
+        airTemp = (23 + Math.random() * 6).toFixed(1);
+        airHum = (60 + Math.random() * 18).toFixed(0);
+        lightIntensity = Math.floor(20000 + Math.random() * 35000);
+        rainFall = (Math.random() * 2).toFixed(1);
+        windSpeed = (1 + Math.random() * 4).toFixed(1);
+        soilMoisture = (22 + Math.random() * 10).toFixed(1);
+        
+        const dataGrid = document.getElementById('dataGrid');
+        const metrics = [
+            { icon: "🌡️", label: "土壤温度", value: currentSoilTemp + "℃", trend: "较昨日↓0.3" },
+            { icon: "💧", label: "土壤湿度", value: currentSoilMoist + "%", trend: "墒情适宜" },
+            { icon: "⚗️", label: "土壤PH值", value: soilPH, trend: "中性微酸" },
+            { icon: "🌬️", label: "空气温湿度", value: airTemp+"℃ / "+airHum+"%", trend: "湿度偏高" },
+            { icon: "☀️", label: "光照强度", value: lightIntensity+" Lux", trend: "今日峰值↑" },
+            { icon: "🌧️", label: "降雨量", value: rainFall+" mm", trend: "近三日无雨" },
+            { icon: "💨", label: "风速风向", value: windSpeed+"m/s "+windDir, trend: "微风" },
+            { icon: "📊", label: "土壤墒情", value: soilMoisture+"%", trend: "轻度缺墒" }
+        ];
+        dataGrid.innerHTML = metrics.map(m => `
+            <div class="data-item">
+                <div class="data-label"><span>${m.icon}</span> ${m.label}</div>
+                <div class="data-value">${m.value}</div>
+                <div class="trend">${m.trend}</div>
+            </div>
+        `).join('');
+
+        // 智能状态条异常模拟：若土壤湿度低于25%或PH<6 就显示异常
+        const statusDiv = document.getElementById('statusTip');
+        if (parseFloat(currentSoilMoist) < 25 || parseFloat(soilPH) < 6.0 || parseFloat(airHum) > 85) {
+            statusDiv.className = "status-bar warning";
+            statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ⚠️ 田间异常：土壤偏干 / 湿度过高，请及时处理';
+        } else {
+            statusDiv.className = "status-bar";
+            statusDiv.innerHTML = '<i class="fas fa-check-circle" style="color:#2F6B2F;"></i> 农情稳定，适宜耕作';
+        }
+        // 农事推荐动态刷新
+        let tip = "今日气候温和，建议检查灌溉系统。";
+        if (parseFloat(currentSoilMoist) < 26) tip = "🌱 土壤偏干，建议早晚灌溉，增加保水措施。";
+        else if (parseFloat(airHum) > 80) tip = "💨 湿度偏高，需防范病害滋生，注意通风降湿。";
+        else tip = "✅ 长势良好，可进行常规追肥与除草。";
+        document.getElementById('dailyTip').innerHTML = tip;
+    }
+
+    // 预警数据模拟（结合当前风险）
+    const alertsHistory = []; // 模拟台账
+
+    function updateAlerts() {
+        const alertContainer = document.getElementById('alertList');
+        let alerts = [];
+        const soilM = parseFloat(currentSoilMoist);
+        const ph = parseFloat(soilPH);
+        const humidity = parseFloat(airHum);
+        // 红色预警
+        if (soilM < 20) alerts.push({ level: 'red', title: '干旱红色预警', msg: '土壤含水量极低，立即灌溉！', solution: '立即启动滴灌系统，早晚各灌水30分钟。', block: '东区水稻田' });
+        if (rainFall > 50) alerts.push({ level: 'red', title: '积涝风险', msg: '降水量过大，田块积水', solution: '开启排水沟渠，及时抽排' });
+        if (ph < 5.5) alerts.push({ level: 'yellow', title: '土壤盐碱化倾向', msg: 'PH值偏低，影响根系', solution: '施用石灰调节酸碱度' });
+        // 黄色预警
+        if (humidity > 85) alerts.push({ level: 'yellow', title: '湿度过高', msg: '空气相对湿度>85%，易诱发稻瘟病', solution: '开棚通风，降低湿度' });
+        if (soilM < 28 && soilM >= 20) alerts.push({ level: 'yellow', title: '土壤轻度缺水', msg: '墒情不足影响分蘖', solution: '适当补灌，维持持水量' });
+        if (alerts.length === 0) alerts.push({ level: 'green', title: '一切正常', msg: '当前无重大风险，可常规管理', solution: '继续监测即可' });
+        
+        alertContainer.innerHTML = alerts.map(alert => {
+            let cls = 'alert-green';
+            if (alert.level === 'red') cls = 'alert-red';
+            if (alert.level === 'yellow') cls = 'alert-yellow';
+            return `<div class="alert-item ${cls}">
+                        <div><strong><i class="fas fa-bell"></i> ${alert.title}</strong> <span class="text-muted"> ${alert.block||'核心地块'}</span></div>
+                        <div style="font-size:13px; margin:6px 0">${alert.msg} 等级:${alert.level==='red'?'紧急':(alert.level==='yellow'?'一般':'正常')}</div>
+                        <div style="background:#F8F9F5; border-radius:20px; padding:6px 12px; font-size:12px;">💡 解决方案：${alert.solution}</div>
+                        <div class="text-muted" style="margin-top:6px"><i class="far fa-clock"></i> 刚刚推送 · 双重提醒已发送</div>
+                    </div>`;
+        }).join('');
+        // 加入历史台账（简单记录）
+        const historyDiv = document.getElementById('historyAlertList');
+        const timeStr = new Date().toLocaleTimeString();
+        if (alerts.length>0 && alerts[0].level !== 'green') {
+            let hisHtml = `<div>${timeStr} ${alerts[0].title} - ${alerts[0].msg.substring(0,20)}</div>` + (historyDiv.innerHTML ? historyDiv.innerHTML : '');
+            if(historyDiv.children.length < 6) historyDiv.innerHTML = hisHtml;
+            else historyDiv.innerHTML = hisHtml;
+        } else if(historyDiv.innerHTML === '') historyDiv.innerHTML = '<div>暂无历史预警记录</div>';
+    }
+
+    // ---------- 数据中心图表与数据模拟 ----------
+    let chartInstance = null;
+    let currentDataType = 'soil';
+    let currentPeriod = 'today';
+    
+    // 模拟不同数据
+    function getChartLabelsAndData(type, period) {
+        let labels = [];
+        let dataset = [];
+        if (period === 'today') labels = ['0时','4时','8时','12时','16时','20时'];
+        else if (period === 'week') labels = ['周一','周二','周三','周四','周五','周六','周日'];
+        else labels = ['第1周','第2周','第3周','第4周'];
+        
+        if (type === 'soil') dataset = labels.map(() => (20 + Math.random() * 12).toFixed(1));
+        else if (type === 'weather') dataset = labels.map(() => (15 + Math.random() * 20).toFixed(1));
+        else if (type === 'env') dataset = labels.map(() => (50 + Math.random() * 35).toFixed(1));
+        else dataset = labels.map(() => (Math.random() * 40).toFixed(0));
+        return { labels, dataset };
+    }
+
+    function renderChart() {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        const { labels, dataset } = getChartLabelsAndData(currentDataType, currentPeriod);
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{ label: currentDataType==='soil'?'土壤指标':(currentDataType==='weather'?'气象温度℃':'环境/虫情指数'), data: dataset, borderColor: '#4caf50', tension: 0.2, fill: false }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        let reportText = "";
+        if(currentDataType === 'soil') reportText = "根据近"+ (currentPeriod==='today'?"日":"期") +"土壤数据分析：含水量波动平缓，PH值稳定，建议增施有机肥改善团粒结构。";
+        else if(currentDataType === 'weather') reportText = "气象数据显示未来三天晴好，昼夜温差8℃，利于糖分积累，注意防范晨间露水病害。";
+        else reportText = "环境与虫情数据：诱虫量较上周减少12%，湿度适宜，长势预判良好；风险总结：暂无明显风险。";
+        document.getElementById('analysisReport').innerHTML = reportText + " 系统生成每日农情分析报告。";
+    }
+
+    // ---------- 个人中心设备加载 ----------
+    function loadDevices() {
+        const devList = document.getElementById('deviceList');
+        const devices = [
+            { name: '土壤温湿度传感器', status: '在线', battery: '98%' },
+            { name: '气象百叶箱', status: '在线', battery: '85%' },
+            { name: '虫情测报灯', status: '检修中', battery: '--' },
+            { name: '墒情监测站', status: '在线', battery: '72%' }
+        ];
+        devList.innerHTML = devices.map(d => `<div class="device-item"><div><i class="fas fa-microchip"></i> ${d.name}</div><div>${d.status} ${d.battery?d.battery:''} <button class="btn-sm" onclick="alert('报修/重启模拟')">操作</button></div></div>`).join('');
+    }
+
+    // 定时刷新首页实时数据/预警联动
+    let interval;
+    function startRealtime() {
+        refreshDashboard();
+        updateAlerts();
+        interval = setInterval(() => {
+            if(document.getElementById('homePage').classList.contains('active-page')) {
+                refreshDashboard();
+                updateAlerts();
+            }
+        }, 8000);
+    }
+
+    // 页面切换&图表刷新联动
+    function switchPage(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+        document.getElementById(pageId+'Page').classList.add('active-page');
+        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+        const targetNav = Array.from(document.querySelectorAll('.nav-item')).find(n => n.getAttribute('data-page') === pageId);
+        if(targetNav) targetNav.classList.add('active');
+        if(pageId === 'dataCenter') { renderChart(); }
+        if(pageId === 'profile') { loadDevices(); }
+        if(pageId === 'alert') { updateAlerts(); }
+    }
+
+    // 初始化交互事件
+    document.querySelectorAll('.nav-item').forEach(nav => {
+        nav.addEventListener('click', (e) => {
+            let page = nav.getAttribute('data-page');
+            switchPage(page);
+        });
+    });
+    // 数据中心筛选器事件
+    document.querySelectorAll('#dataFilterBar .filter-chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+            document.querySelectorAll('#dataFilterBar .filter-chip').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            currentDataType = this.getAttribute('data-type');
+            renderChart();
+        });
+    });
+    document.querySelectorAll('#timeFilterBar .filter-chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+            document.querySelectorAll('#timeFilterBar .filter-chip').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            currentPeriod = this.getAttribute('data-period');
+            renderChart();
+        });
+    });
+
+    startRealtime();
+    loadDevices();
+    renderChart(); // 预渲染默认图表
+    // 初始预警更新一次
+    setTimeout(() => { updateAlerts(); }, 500);
+</script>
+</body>
+</html>
